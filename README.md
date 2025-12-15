@@ -13,15 +13,25 @@ This repo demonstrates practical, job-relevant skills:
 
 ## Architecture (Medallion)
 CSV (raw files)
+
    |
+   
    v
-BRONZE  (raw-as-is + metadata)        -> Delta table
+   
+BRONZE  (raw-as-is + metadata)        -> Delta table.
+
    |
+   
    v
-SILVER  (typed, validated, deduped)   -> Delta table + invalid/quarantine table
+   
+SILVER  (typed, validated, deduped)   -> A Delta table along with an invalid or quarantine table.
+
    |
+   
    v
-GOLD    (aggregations for analytics)  -> Delta tables (daily usage, top stations, etc.)
+   
+GOLD    (aggregations for analytics)  -> Delta tables, including daily usage and top stations, etc.
+
 
 ## Dataset: Citi Bike Trip Histories (CSV)
 Citi Bike publishes downloadable trip history files (compressed CSVs) here:
@@ -43,20 +53,28 @@ Pick **one month** to start (example below uses Jan 2024):
 
 ### Option B — Download directly from a notebook (fastest if internet is allowed)
 Run the ingestion notebook with `download_mode=auto_download` and it will:
-- Download the zip to the driver's ephemeral storage
-- unzip it
-- copy CSVs into your configured DBFS folder
+- Please download the zip file to the temporary storage on the driver’s device.
+- unzip it.
+- Please copy the CSV files into the designated DBFS folder that you have configured.
 
 ## Project structure
 .
 ├── notebooks/
+
 │   ├── 00_setup.py
+
 │   ├── 01_download_and_ingest_bronze.py
+
 │   ├── 02_transform_silver.py
+
 │   └── 03_build_gold.py
+
 ├── docs/
-│   └── data_dictionary.md              # (optional) explain columns + assumptions
+
+│   └── data_dictionary.md              # (Optional) Explanation of Columns and Assumptions.
+
 ├── .gitignore
+
 └── README.md
 
 ## Quickstart (end-to-end)
@@ -75,9 +93,9 @@ Run the ingestion notebook with `download_mode=auto_download` and it will:
 - Gold DQ summary: `{prefix}_gold.citibike_dq_summary`
 
 ## Next improvements (optional)
-- Add OPTIMIZE / ZORDER for performance
-- Add unit-like checks (row counts, null thresholds) and persist metrics
-- Add a Jobs workflow (3 notebook tasks) to run nightly/weekly
+- Implement OPTIMISE or ZORDER to enhance performance.
+- Incorporate unit checks, such as row counts and null value thresholds, and ensure that metrics are persisted.
+- Create a Jobs workflow consisting of three notebook tasks that will run either nightly or weekly.
 
 ## References
 - Medallion Architecture (Databricks): https://docs.databricks.com/aws/en/lakehouse/medallion
