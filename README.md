@@ -1,89 +1,73 @@
 # Citi Bike Medallion ETL (CSV → Delta) on Databricks
 
-A portfolio-ready **data engineering** project that implements the **Medallion Architecture (Bronze → Silver → Gold)** in **Databricks** using **CSV trip history files** from **NYC Citi Bike** and storing curated outputs as **Delta Lake tables**.
+Hands-on data engineering showcase: ingest Citi Bike trip CSVs into a Databricks lakehouse, layer them through the Medallion pattern (Bronze → Silver → Gold), and surface Delta tables ready for analytics.
 
-## Why this project?
-This repo demonstrates practical, job-relevant skills:
-- Batch ingestion from CSV into a lakehouse.
-- Medallion layering (raw → validated → analytics-ready).
-- Basic data quality checks + quarantine of invalid records.
-- Delta Lake tables (reliable storage + table history).
-- Parameterised runs (e.g., ingest one month at a time).
-- Optional scheduling via Databricks Jobs.
+**Quick links:** [Badges](#badges) • [Why this project](#why-this-project) • [Architecture](#architecture-medallion) • [Dataset](#dataset-citi-bike-trip-histories-csv) • [Project layout](#project-layout) • [Run it](#quickstart-end-to-end) • [Outputs](#outputs-tables)
+
+
+## Badges
+[![Platform: Databricks](https://img.shields.io/badge/Platform-Databricks-EF2D5E?logo=databricks&logoColor=white)](https://www.databricks.com/)
+[![Format: Delta Lake](https://img.shields.io/badge/Format-Delta%20Lake-0A7DBC)](https://delta.io/)
+[![Architecture: Medallion](https://img.shields.io/badge/Architecture-Medallion-4E6E81)](#architecture-medallion)
+[![Language: Python](https://img.shields.io/badge/Language-Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Workflow: Notebooks](https://img.shields.io/badge/Workflow-Databricks%20Notebooks-F47C20?logo=jupyter&logoColor=white)](#project-layout)
+
+
+## Why this project
+- Demonstrates job-ready lakehouse skills: CSV batch ingestion, Medallion layering, Delta tables, and basic DQ with quarantine.
+- Parameterised month-by-month runs to keep compute/storage small while still realistic.
+- Friendly to demos: end-to-end completes with one month of data on a small Databricks cluster.
+- Extendable: add scheduling (Jobs), performance tuning (OPTIMIZE/ZORDER), or richer checks.
+
 
 ## Architecture (Medallion)
-CSV (raw files)
+Bronze: land raw CSV rows + file metadata into Delta.  
+Silver: apply schema, type casting, validation, deduplication, and quarantine invalid rows.  
+Gold: aggregate for analytics (daily ridership, top stations, DQ summary).
 
-   |
-   
-   v
-   
-BRONZE  (raw-as-is + metadata)        -> Delta table.
-
-   |
-   
-   v
-   
-SILVER  (typed, validated, deduped)   -> A Delta table along with an invalid or quarantine table.
-
-   |
-   
-   v
-   
-GOLD    (aggregations for analytics)  -> Delta tables, including daily usage and top stations, etc.
+Flow: CSVs → Bronze table → Silver table (+ invalid) → Gold tables.
 
 
 ## Dataset: Citi Bike Trip Histories (CSV)
-Citi Bike publishes downloadable trip history files (compressed CSVs) here:
-- Citi Bike System Data page: https://citibikenyc.com/system-data
-- “Download Citi Bike trip history data” bucket index: https://s3.amazonaws.com/tripdata/index.html
+- System data page: https://citibikenyc.com/system-data
+- Bucket index (direct links): https://s3.amazonaws.com/tripdata/index.html
+- Starter month (fast + budget-friendly): https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.csv.zip
 
-### Recommended small-scope approach (fast + budget-friendly)
-Pick **one month** to start (example below uses Jan 2024):
-- https://s3.amazonaws.com/tripdata/202401-citibike-tripdata.csv.zip
+Tip: If your workspace blocks outbound internet, download locally and upload to DBFS or a Unity Catalog volume.
 
-> Note: Some environments block outbound internet access from clusters. If so, download locally and upload to Databricks instead.
 
-## Getting the CSVs into Databricks (2 options)
+## Getting the CSVs into Databricks
+**Option A (reliable): download locally, then upload**  
+1) Download a monthly `.zip`.  
+2) In Databricks: **New → Data → Upload**, store in DBFS/Volume.  
+3) Unzip (patterns in `notebooks/01_download_and_ingest_bronze.py`).
 
-### Option A — Download locally, then upload to Databricks (most reliable)
-1. Download a monthly `.zip` from the links above.
-2. In Databricks: **New → Data** and use file upload to store the file (DBFS or a Unity Catalogue Volume).
-3. Unzip it (see `01_download_and_ingest_bronze.py` for code patterns).
+**Option B (fastest if internet allowed): download from the notebook**  
+Run `01_download_and_ingest_bronze.py` with `download_mode="auto_download"` to fetch, unzip, and copy into your configured folder automatically.
 
-### Option B — Download directly from a notebook (fastest if internet is allowed)
-Run the ingestion notebook with `download_mode=auto_download` and it will:
-- Please download the zip file to the temporary storage on the driver’s device.
-- unzip it.
-- Please copy the CSV files into the designated DBFS folder that you have configured.
 
-## Project structure
+## Project layout
+```
 .
 ├── notebooks/
-
-│   ├── 00_setup.py
-
+│   ├── 00_setup.py                  # Configure catalogs/schemas, base paths, widgets
 │   ├── 01_download_and_ingest_bronze.py
-
 │   ├── 02_transform_silver.py
-
 │   └── 03_build_gold.py
-
 ├── docs/
-
-│   └── data_dictionary.md              # (Optional) Explanation of Columns and Assumptions.
-
-├── .gitignore
-
+│   └── data_dictionary.md           # Optional: column meanings and assumptions
 └── README.md
+```
+
 
 ## Quickstart (end-to-end)
-1. Create a Databricks cluster (small / single-node is fine).
-2. Run `notebooks/00_setup.py` to create schemas + set config.
-3. Run `notebooks/01_download_and_ingest_bronze.py` for a month (e.g., `yyyymm=202401`).
-4. Run `notebooks/02_transform_silver.py` for the same month.
-5. Run `notebooks/03_build_gold.py` to generate analytics tables.
-6. Query Gold tables in Databricks SQL to validate results.
+1) Spin up a small Databricks cluster (single node is fine).  
+2) Open `notebooks/00_setup.py` → run all cells (creates schemas + config widgets).  
+3) Open `notebooks/01_download_and_ingest_bronze.py` → set `yyyymm` (e.g., `202401`) and run.  
+4) Open `notebooks/02_transform_silver.py` → run for the same `yyyymm`.  
+5) Open `notebooks/03_build_gold.py` → run to materialise analytics tables.  
+6) Validate in Databricks SQL: query Gold tables to spot-check counts and top stations.
+
 
 ## Outputs (tables)
 - Bronze: `{prefix}_bronze.citibike_trips_bronze`
@@ -92,10 +76,13 @@ Run the ingestion notebook with `download_mode=auto_download` and it will:
 - Gold: `{prefix}_gold.citibike_daily_ridership`, `{prefix}_gold.citibike_top_start_stations`, etc.
 - Gold DQ summary: `{prefix}_gold.citibike_dq_summary`
 
-## Next improvements (optional)
-- Implement OPTIMISE or ZORDER to enhance performance.
-- Incorporate unit checks, such as row counts and null value thresholds, and ensure that metrics are persisted.
-- Create a Jobs workflow consisting of three notebook tasks that will run either nightly or weekly.
+
+## Next improvements (pick and try)
+- Add OPTIMIZE/ZORDER for faster queries after initial loads.
+- Persist basic DQ metrics (row counts, null thresholds) and alert on drift.
+- Orchestrate with a Databricks Jobs workflow (00 → 01 → 02 → 03 nightly/weekly).
+- Layer in unit tests for transformations or add expectations via Delta Live Tables.
+
 
 ## References
 - Medallion Architecture (Databricks): https://docs.databricks.com/aws/en/lakehouse/medallion
