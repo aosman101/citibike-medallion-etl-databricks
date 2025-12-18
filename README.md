@@ -1,5 +1,13 @@
 # London Air Quality + Weather Lakehouse (Airflow • dbt • Postgres • MinIO • Metabase)
 
+[![CI](https://github.com/aosman101/london-air-quality-weather-lakehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/aosman101/london-air-quality-weather-lakehouse/actions/workflows/ci.yml)
+![Airflow](https://img.shields.io/badge/Airflow-2.7-017CEE?logo=apacheairflow&logoColor=white)
+![dbt](https://img.shields.io/badge/dbt-Core-FE5C3A?logo=dbt&logoColor=white)
+![Postgres](https://img.shields.io/badge/Postgres-15-336791?logo=postgresql&logoColor=white)
+![MinIO](https://img.shields.io/badge/MinIO-S3%20lake-FF4F00?logo=minio&logoColor=white)
+![Metabase](https://img.shields.io/badge/Metabase-BI-509EE3?logo=metabase&logoColor=white)
+![Great Expectations](https://img.shields.io/badge/Great%20Expectations-Data%20Quality-5C4EE5)
+
 Local-first, 100% free/open-source data platform:
 - Ingest air-quality data (OpenAQ) + weather data (Open‑Meteo)
 - Land raw payloads in an S3-compatible data lake (MinIO)
