@@ -68,6 +68,7 @@ services:
       - ../src:/opt/airflow/src
       - ../dbt:/opt/airflow/dbt
       - ../quality:/opt/airflow/quality
+      - airflow_logs:/opt/airflow/logs
     ports: ["8080:8080"]
     command: webserver
 
@@ -95,6 +96,7 @@ services:
       - ../src:/opt/airflow/src
       - ../dbt:/opt/airflow/dbt
       - ../quality:/opt/airflow/quality
+      - airflow_logs:/opt/airflow/logs
     command: scheduler
 
 volumes:
