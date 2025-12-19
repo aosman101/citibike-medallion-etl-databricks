@@ -1,13 +1,11 @@
 from __future__ import annotations
 
+import os
 from airflow.decorators import dag, task
 from airflow.utils.dates import days_ago
 from airflow.utils.context import get_current_context
-import pendulum
-import os
 
 from aqw.openaq_client import list_locations_near, sensor_hourly
-from aqw.openmeteo_client import hourly_weather
 from aqw.lake import put_json, s3_client
 from aqw.warehouse import upsert_air_quality
 

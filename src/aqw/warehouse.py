@@ -17,6 +17,8 @@ def upsert_air_quality(rows: list[dict]) -> int:
     Upserts flattened records into raw.air_quality_hourly.
     We use ON CONFLICT to make runs idempotent.
     """
+    if not rows:
+        return 0
     sql = """
       INSERT INTO raw.air_quality_hourly
       (sensor_id, location_id, location_name, parameter, units, latitude, longitude, ts_utc, value)
