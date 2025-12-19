@@ -18,21 +18,29 @@ Hands-on lakehouse demo for London air quality and weather:
 
 ---
 
-## Architecture at a glance
+## Architecture
 
 ```
-OpenAQ API        Open-Meteo API
-    |                   |
-    v                   v
-           Apache Airflow DAG
-     (extract -> land -> load -> transform)
-                |                   |
-                v                   v
-         MinIO (S3 lake)     Postgres warehouse
-       raw JSON objects      raw / staging / marts
-                \                 /
-                 \               /
-                     Metabase BI
+               +-------------------+       +--------------------+
+               |     OpenAQ API    |       |   Open-Meteo API   |
+               +---------+---------+       +----------+---------+
+                         |                             |
+                         v                             v
+                 +-------+-------------------------------+------+
+                 |            Apache Airflow DAG               |
+                 |    extract -> land -> load -> transform     |
+                 +-------+-------------------------------+------+
+                         |                             |
+                         v                             v
+               +---------+---------+        +----------+---------+
+               |    MinIO (S3)     |        |   Postgres (WH)    |
+               |   raw JSON lake   |        | raw / stg / marts  |
+               +---------+---------+        +----------+---------+
+                         \                         /
+                          \                       /
+                             +-----------------+
+                             |    Metabase     |
+                             +-----------------+
 ```
 
 ---
@@ -99,11 +107,14 @@ Connect to Postgres at `localhost:5434`, database `warehouse`, user `warehouse`.
 
 ## Project layout
 ```
-dags/                   Airflow DAGs
-dbt/aqw/                dbt project (models, profile)
-quality/gx_validate.py  Great Expectations entrypoint
-src/aqw/                Python clients (OpenAQ, lake, warehouse)
-docker/                 Docker Compose and Airflow image build
+.
+├── dags/                 Airflow DAGs (TaskFlow)
+├── dbt/aqw/              dbt project (models, profiles.yml)
+│   ├── models/staging/   staging models
+│   └── models/marts/     fact models
+├── quality/              Great Expectations entrypoint
+├── src/aqw/              Python clients (OpenAQ, lake, warehouse)
+└── docker/               Docker Compose + Airflow image build
 ```
 
 ---
