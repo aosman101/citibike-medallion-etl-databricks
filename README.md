@@ -8,63 +8,74 @@
 ![Metabase](https://img.shields.io/badge/Metabase-BI-509EE3?logo=metabase&logoColor=white)
 ![Great Expectations](https://img.shields.io/badge/Great%20Expectations-Data%20Quality-5C4EE5)
 
-Hands-on lakehouse demo for London air quality and weather:
-- Pull OpenAQ hourly sensor readings (and optionally Open-Meteo weather).
-- Land raw JSON in a MinIO data lake, upsert flattened rows into Postgres.
-- Transform with dbt (incremental models) and validate with Great Expectations.
-- Explore downstream in Metabase. Entire stack runs locally via Docker Compose.
+Local lakehouse demo that pulls hourly OpenAQ readings around London, lands raw JSON in a MinIO lake, upserts flattened rows into Postgres, transforms with dbt, and runs Great Expectations checks before exploring in Metabase. Everything is containerized for quick spin-up.
 
-> This is a learning/portfolio project. The Docker Compose Airflow setup is for local use, not production.
+> Portfolio / learning project; the Airflow Compose stack is intentionally minimal and not production hardened.
 
 ---
 
-## Architecture
+## System architecture
 
 ```
-               +-------------------+       +--------------------+
-               |     OpenAQ API    |       |   Open-Meteo API   |
-               +---------+---------+       +----------+---------+
-                         |                             |
-                         v                             v
-                 +-------+-------------------------------+------+
-                 |            Apache Airflow DAG               |
-                 |    extract -> land -> load -> transform     |
-                 +-------+-------------------------------+------+
-                         |                             |
-                         v                             v
-               +---------+---------+        +----------+---------+
-               |    MinIO (S3)     |        |   Postgres (WH)    |
-               |   raw JSON lake   |        | raw / stg / marts  |
-               +---------+---------+        +----------+---------+
-                         \                         /
-                          \                       /
-                             +-----------------+
-                             |    Metabase     |
-                             +-----------------+
+                   +--------------------+
+                   |     OpenAQ API     |
+                   +---------+----------+
+                             |
+                discover sensors + hourly pull
+                             |
+                 +-----------v-----------+
+                 | Airflow DAG (TaskFlow)|
+                 |   schedule: @hourly   |
+                 +-----------+-----------+
+                             |
+         +-------------------+-------------------+
+         |                                       |
+ +-------v-------+                       +-------v------------------+
+ |   MinIO lake  |                       |    Postgres warehouse    |
+ | raw/openaq/...|                       | raw.air_quality_hourly   |
+ +-------+-------+                       | marts.fct_air_quality... |
+         |                               +-----------+--------------+
+         |                                           |
+         v                                           v
+   Object storage                             dbt models (incremental)
+                                                    |
+                                           Great Expectations checks
+                                                    |
+                                                 Metabase
 ```
 
----
-
-## What is included
-- Airflow TaskFlow DAG: discover nearby sensors, fetch hourly readings, write lake objects, upsert into warehouse.
-- dbt models: staging and fact (`raw.air_quality_hourly` -> `marts.fct_air_quality_hourly`) with incremental materialization.
-- Great Expectations: simple checks on the fact model (`quality/gx_validate.py`).
-- Dockerized stack: Postgres (airflow + warehouse), MinIO, Metabase, Airflow webserver and scheduler.
+- `dags/aqw_london_lakehouse.py` discovers nearby sensors, pulls the last hour of readings, writes raw objects to S3-compatible storage, and idempotently upserts into `raw.air_quality_hourly`.
+- `dbt/aqw` materializes staging + fact models; the fact is incremental on `(sensor_id, ts_utc)`.
+- `quality/gx_validate.py` runs a basic suite against `marts.fct_air_quality_hourly`.
 
 ---
 
-## Quickstart (local)
+## Stack (local, via Docker Compose)
+- Airflow webserver + scheduler (LocalExecutor) at `localhost:8080`
+- Postgres (warehouse) at `localhost:5434`
+- MinIO API/console at `localhost:9000/9001`
+- Metabase at `localhost:3000`
+- Supporting Postgres for Airflow metadata at `localhost:5433`
+
+---
+
+## Quickstart
 
 1) Prerequisites  
-Docker + Docker Compose, and a free `OPENAQ_API_KEY`.
+Docker + Docker Compose, plus a free `OPENAQ_API_KEY` from OpenAQ.
 
-2) Configure env vars  
-Copy `.env.example` to `.env` and set at least:
+2) Create `.env`  
+Place this next to `docker/compose.yaml`:
 ```
-OPENAQ_API_KEY=...
-MINIO_ROOT_USER=...
-MINIO_ROOT_PASSWORD=...
-WAREHOUSE_PASSWORD=...
+OPENAQ_API_KEY=your_token
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=change_me
+WAREHOUSE_PASSWORD=change_me
+# Optional overrides
+WAREHOUSE_HOST=warehouse-db
+WAREHOUSE_PORT=5432
+WAREHOUSE_DB=warehouse
+WAREHOUSE_USER=warehouse
 ```
 
 3) Bring up the stack  
@@ -72,36 +83,59 @@ WAREHOUSE_PASSWORD=...
 docker compose -f docker/compose.yaml up -d --build
 ```
 
-4) Use Airflow  
-- Open http://localhost:8080, enable the DAG `aqw_london_lakehouse`, and trigger a run.
-- Lake objects land under `raw/openaq/hourly/...` in MinIO (console: http://localhost:9001).
-- Flattened rows upsert into `raw.air_quality_hourly` in Postgres (`localhost:5434` by default).
+4) Create an Airflow admin user (first run only)  
+```bash
+docker compose -f docker/compose.yaml run --rm airflow-webserver \
+  airflow users create --username admin --password admin \
+  --firstname Air --lastname Flow --role Admin --email admin@example.com
+```
 
-5) Run dbt transforms  
+5) Use Airflow  
+- Open http://localhost:8080, enable DAG `aqw_london_lakehouse`, trigger a run.
+- Raw objects land under `raw/openaq/hourly/...` in MinIO (console: http://localhost:9001).
+- Flattened rows upsert into `raw.air_quality_hourly` in Postgres (`localhost:5434` from your host).
+
+6) Run dbt transforms  
 ```bash
 cd dbt/aqw
 dbt deps
-dbt parse
 dbt run
 ```
-The profile at `dbt/aqw/profiles.yml` defaults to `localhost:5434` and schema `marts`.
+`profiles.yml` points to the warehouse on `localhost:5434` with schema `marts`.
 
-6) Data quality check (optional)  
+7) Data quality check (optional)  
 ```bash
 export WAREHOUSE_USER=warehouse WAREHOUSE_PASSWORD=... WAREHOUSE_HOST=localhost WAREHOUSE_PORT=5434 WAREHOUSE_DB=warehouse
 python quality/gx_validate.py
 ```
 
-7) Explore in Metabase  
+8) Explore in Metabase  
 Connect to Postgres at `localhost:5434`, database `warehouse`, user `warehouse`.
+
+To tear down: `docker compose -f docker/compose.yaml down -v`
 
 ---
 
-## Environment variables (key ones)
-- `OPENAQ_API_KEY` (required) - OpenAQ auth token.
-- `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` - MinIO credentials.
-- `WAREHOUSE_PASSWORD` (and optionally `WAREHOUSE_HOST/PORT/DB/USER`) - Postgres warehouse auth.
-- `LAKE_BUCKET` - defaults to `lake` when writing to MinIO.
+## Data + models
+- Raw landing: `raw.air_quality_hourly` (hourly sensor readings; primary key `(sensor_id, ts_utc)`).
+- Transform: `dbt/aqw/models/staging/stg_air_quality_hourly.sql` → `dbt/aqw/models/marts/fct_air_quality_hourly.sql` (incremental).
+- Quality: `quality/gx_validate.py` checks sensor + timestamp presence and bounds `value`.
+
+---
+
+## Configuration knobs
+- `OPENAQ_API_KEY` (required) — OpenAQ auth token.
+- `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` — MinIO credentials; `LAKE_BUCKET` defaults to `lake`.
+- `WAREHOUSE_*` — connection info for the warehouse database (used by Airflow, dbt, GX).
+- `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` — passed into Airflow for S3 access.
+
+---
+
+## Extending / next steps
+- Add Open-Meteo pulls into the DAG and populate `raw.weather_hourly` (schema already provisioned).
+- Layer more dbt models (dimensions, rollups) and dbt tests.
+- Harden Airflow for production (remote executor, secrets backend, auth).
+- Add CI checks for dbt + GX and smoke tests for the DAG.
 
 ---
 
