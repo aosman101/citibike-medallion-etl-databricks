@@ -1,4 +1,4 @@
-# London Air Quality + Weather Lakehouse (Airflow / dbt / Postgres / MinIO / Metabase)
+# London Air Quality & Weather Lakehouse (Airflow, dbt, Postgres, MinIO, Metabase)
 
 [![CI](https://github.com/aosman101/london-air-quality-weather-lakehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/aosman101/london-air-quality-weather-lakehouse/actions/workflows/ci.yml)
 ![Airflow](https://img.shields.io/badge/Airflow-2.7-017CEE?logo=apacheairflow&logoColor=white)
@@ -8,9 +8,9 @@
 ![Metabase](https://img.shields.io/badge/Metabase-BI-509EE3?logo=metabase&logoColor=white)
 ![Great Expectations](https://img.shields.io/badge/Great%20Expectations-Data%20Quality-5C4EE5)
 
-Local lakehouse demo that pulls hourly OpenAQ readings around London, lands raw JSON in a MinIO lake, upserts flattened rows into Postgres, transforms with dbt, and runs Great Expectations checks before exploring in Metabase. Everything is containerized for quick spin-up.
+This local lakehouse demo retrieves hourly OpenAQ readings from around London and stores the raw JSON data in a MinIO lake. It then upserts flattened rows into a PostgreSQL database, transforms the data using dbt, and performs checks with Great Expectations before visualising it in Metabase. The entire setup is containerised for easy and quick deployment.
 
-> Portfolio / learning project; the Airflow Compose stack is intentionally minimal and not production hardened.
+> Portfolio/learning project; the Airflow Compose stack is intentionally minimal and not production-hardened.
 
 ---
 
